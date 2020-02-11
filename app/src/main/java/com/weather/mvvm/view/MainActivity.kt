@@ -15,7 +15,9 @@ import com.weather.R
 import kotlinx.android.synthetic.main.layout_weather_forecast.view.*
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), View.OnClickListener {
+
+    private lateinit var viewModel: WeatherViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,26 +26,36 @@ class MainActivity : AppCompatActivity() {
 
         rotateProgressBar()
 
-        val viewModelProvider = ViewModelProvider.AndroidViewModelFactory.getInstance(application)
-        val viewModel = viewModelProvider.create(WeatherViewModel::class.java)
+        if (!::viewModel.isInitialized) {
+            val viewModelProvider = ViewModelProvider.AndroidViewModelFactory.getInstance(application)
+            viewModel = viewModelProvider.create(WeatherViewModel::class.java)
+        }
+
+        attachListener()
+
         fetchWeatherForecast(viewModel)
     }
 
-    private fun rotateProgressBar() {
-        val rotateAnimation = RotateAnimation(0f,360f,Animation.RELATIVE_TO_SELF,0.5f,
-            Animation.RELATIVE_TO_SELF,0.5f)
-        rotateAnimation.duration = 1200
-        rotateAnimation.repeatCount = Animation.INFINITE
-        iv_loader.startAnimation(rotateAnimation)
+    private fun attachListener() {
+        btn_retry?.setOnClickListener(this)
+    }
+
+    override fun onClick(view: View?) {
+        when (view?.id) {
+            R.id.btn_retry -> {
+                ll_progress_bar.visibility = View.VISIBLE
+                ll_forecast_error.visibility = View.GONE
+                fetchWeatherForecast(viewModel)
+            }
+        }
     }
 
     private fun fetchWeatherForecast(viewModel: WeatherViewModel) {
         val result = viewModel.getMutableLiveData()
 
         result.observe(this, Observer { response ->
-            if (response.isStatus) {
-                ll_progress_bar.visibility = View.GONE
-            } else {
+
+            if (response.error == null) {
                 ll_progress_bar.visibility = View.GONE
                 ll_forecast.visibility = View.VISIBLE
 
@@ -66,6 +78,10 @@ class MainActivity : AppCompatActivity() {
                 layout_4.iv_day.setImageDrawable(getDrawable(R.drawable.storm))
                 layout_4.tv_climate.text = getString(R.string.storms)
                 layout_4.tv_temperature.text = getString(R.string.cloud_temp)
+            } else {
+                ll_progress_bar.visibility = View.GONE
+                ll_forecast.visibility = View.GONE
+                ll_forecast_error.visibility = View.VISIBLE
             }
         })
     }
@@ -75,4 +91,11 @@ class MainActivity : AppCompatActivity() {
         ll_forecast_days.startAnimation(slideUp)
     }
 
+    private fun rotateProgressBar() {
+        val rotateAnimation = RotateAnimation(0f,360f,Animation.RELATIVE_TO_SELF,0.5f,
+            Animation.RELATIVE_TO_SELF,0.5f)
+        rotateAnimation.duration = 1200
+        rotateAnimation.repeatCount = Animation.INFINITE
+        iv_loader.startAnimation(rotateAnimation)
+    }
 }
